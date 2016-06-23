@@ -8,24 +8,51 @@ body {
     background: #8e9eab;
     background: -webkit-linear-gradient(to left, #8e9eab , #eef2f3);
     background: linear-gradient(to left, #8e9eab , #eef2f3);
+    font-family: 'Open Sans', sans-serif;
 }
 
 h1 {
     text-align: center;
     font-family: 'Kaushan Script', cursive;
     font-size: 50px;
-    margin: 50px;
-    background: -webkit-linear-gradient(#167abd, #2980b9);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #167abd;
+    margin: 50px 0 20px;
+}
+
+h1:nth-of-type(1) {
+    -webkit-animation: breath 2s ease-in-out normal;
+    animation: breath 2s ease-in-out normal;
+}
+
+@keyframes breath {
+    50% { transform: scale(0.95) }
 }
 
 p {
-    font-family: 'Open Sans', sans-serif;
     width: 600px;
     font-size: 20px;
     font-style: italic;
-    margin: 0 auto 20px auto;
+    margin: 0 auto;
+}
+
+p.tuts {
+    font-family: 'Kaushan Script', cursive;
+    font-size: 27px;
+    text-align: center;
+    font-style: normal;
+    color: #167abd;
+    margin: 20px auto 0;
+}
+
+p.tuts span.dot {
+    font-size: 30px;
+    color: #222;
+}
+
+p.notes {
+    font-size: 22px;
+    text-align: center;
+    opacity: 0;
 }
 
 a {
@@ -41,7 +68,7 @@ a:visited {
     display: block;
     width: 450px;
     height: 450px;
-    margin: 50px auto;
+    margin: 20px auto;
     position: relative;
     background: rgba(41, 128, 185, 0.1);
     -webkit-border-radius: 50%;
@@ -105,6 +132,7 @@ a:visited {
     border-radius: 50%;
     border: 90px solid #2788c9;
     opacity: 0.4;
+    display: block;
 }
 
 .a {
