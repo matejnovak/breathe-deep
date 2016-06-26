@@ -33,7 +33,7 @@ h1 {
     font-family: 'Kaushan Script', cursive;
     font-size: 52px;
     color: #167abd;
-    padding: 0 0 20px;
+    padding: 30px 0 20px;
     -webkit-animation: breath 2s ease-in-out normal;
     -ms-animation: breath 2s ease-in-out normal;
     animation: breath 2s ease-in-out normal;
@@ -276,10 +276,6 @@ a:visited {
         border: 50px solid #2788c9;
     }
 
-    .ad {
-        margin: 20px auto 0;
-    }
-
     .twitter {
         display: none;
     }
@@ -323,8 +319,8 @@ a:visited {
     .twitter {
         display: none;
     }
-
-    .ad {
-        margin: 20px auto 0;
-    }
 }
+
+.ads { width: 320px; height: 100px; }
+@media(min-width: 500px) { .ads { width: 468px; height: 60px; } }
+@media(min-width: 800px) { .ads { width: 728px; height: 90px; } }
