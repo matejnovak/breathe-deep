@@ -28,10 +28,6 @@ body {
     position: relative;
 }
 
-.wrapper {
-
-}
-
 h1 {
     text-align: center;
     font-family: 'Kaushan Script', cursive;
@@ -194,12 +190,6 @@ a:visited {
         background: #3498db;
         border-color: #2980b9;
   }
-}
-
-.ad {
-    max-width: 468px; height: 60px;
-    background: #ccc;
-    margin: 0 auto;
 }
 
 .twitter {
