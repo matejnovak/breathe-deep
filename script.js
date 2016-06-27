@@ -1,4 +1,5 @@
 $(function(){
+  $.cookieBar();
   $('h1').animate({opacity: 1}, 10);
   var toggleState = true;
 
