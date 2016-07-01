@@ -35,7 +35,7 @@ h1 {
     font-family: 'Kaushan Script', cursive;
     font-size: 52px;
     color: #167abd;
-    padding: 30px 0 20px;
+    padding: 40px 0 20px;
     -webkit-animation: breath 2s ease-in-out normal;
     -ms-animation: breath 2s ease-in-out normal;
     animation: breath 2s ease-in-out normal;
@@ -90,7 +90,7 @@ a:visited {
 
 .container {
     width: 400px; height: 400px;
-    margin: 20px auto;
+    margin: 30px auto;
     position: relative;
     background: rgba(41, 128, 185, 0.1);
     border-radius: 50%;
@@ -139,8 +139,6 @@ a:visited {
 }
 
 .boom {
-    position: absolute;
-    top: 0; left: 0; bottom: 0; right: 0;
     margin: auto;
     z-index: 1;
     background: #3498db;
@@ -150,6 +148,11 @@ a:visited {
     -webkit-animation: breathing 9s ease-in-out infinite normal;
     -ms-animation: breathing 9s ease-in-out infinite normal;
     animation: breathing 9s ease-in-out infinite normal;
+}
+
+.a, .b, .c, .d, .e {
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
 }
 
 .a { width: 50%; height: 50%; }
@@ -222,7 +225,7 @@ a:visited {
 
 @media (max-width: 768px) { 
     h1 {
-        padding: 0 0 15px;
+        padding: 15px 0 15px;
         font-size: 55px;
     }
 
@@ -245,7 +248,7 @@ a:visited {
 
 @media (max-width: 480px) {
     h1 {
-        padding: 0 0 5px;
+        padding: 5px 0 5px;
         font-size: 47px;
     }
 
