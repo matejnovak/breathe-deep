@@ -324,13 +324,13 @@ a:visited {
 }
 
 .ads { 
-    width: 320px;
-    height: 100px;
+    width: 330px; height: 100px;
     margin: 0 auto;
+    text-align: center;
 }
 
 @media(min-width: 500px) { .ads { width: 468px; height: 60px; } }
-@media(min-width: 800px) { .ads { width: 468px; height: 60px; } }
+
 
 #cookie-bar {background:#111111; height:auto; line-height:24px; color:#eeeeee; text-align:center; padding:3px 0;}
 #cookie-bar.fixed {position:fixed; top:0; left:0; width:100%;}
