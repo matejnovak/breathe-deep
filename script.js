@@ -28,12 +28,12 @@ $(function(){
     $('.tuts span').stop();
 
     if(toggleState) {
-      $('.a, .b, .c, .d, .e').addClass("boom");
+      $('.a, .b, .c, .d, .e, .f, .g, .h, .i, .j').addClass("boom");
       $('.btn').fadeOut(400);
       $('.notes').animate({opacity: 0}, 3000);
       animateTuts();
     } else {
-      $('.a, .b, .c, .d, .e').removeClass('boom');
+      $('.a, .b, .c, .d, .e, .f, .g, .h, .i, .j').removeClass('boom');
       $('.btn').fadeIn(1000).text('Repeat');
       $('.tuts span').animate({ color: '#167abd' }, 500);
       clearTimeout(timerOne);
