@@ -1,3 +1,0 @@
-#Options +FollowSymLinks
-RewriteEngine on
-RewriteRule ^(.*) http://www.matejnovak.si/breathe-deep/$1 [R=301,L]
