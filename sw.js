@@ -1,11 +1,11 @@
-const CACHE = 'breathe-deep-v7';
+const CACHE = 'breathe-deep-v8';
 const CROSS_ORIGIN_CACHE_HOSTS = new Set(['fonts.googleapis.com', 'fonts.gstatic.com']);
 const SHELL = [
   './',
   './index.html',
   './style.css',
-  './app.js',
-  './vendor/web-haptics.js',
+  './app.js?v=2',
+  './vendor/web-haptics.js?v=2',
   './manifest.webmanifest',
   './favicon.png',
   './img/apple-touch-icon-iphone.png',
