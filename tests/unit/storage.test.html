@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Breathe Deep . storage</title>
+  <style>
+    body { font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 24px; max-width: 720px; margin: 0 auto; color: #eee; background: #15171f; }
+    h1 { font-weight: 500; font-size: 18px; }
+    .row { padding: 6px 10px; border-radius: 6px; margin: 2px 0; }
+    .pass { background: rgba(80, 200, 120, 0.12); color: #b9f1c8; }
+    .fail { background: rgba(220, 90, 90, 0.18); color: #ffd6d6; white-space: pre-wrap; }
+    .summary { margin-top: 16px; padding: 12px; border-radius: 8px; background: #1c2030; }
+  </style>
+</head>
+<body>
+  <h1>Breathe Deep . storage</h1>
+  <div id="results"></div>
+  <div id="summary" class="summary">running…</div>
+
+  <script>
+    if (!/[?&]test(=|&|$)/.test(location.search)) {
+      const sep = location.search ? '&' : '?';
+      history.replaceState(null, '', location.pathname + location.search + sep + 'test=1');
+    }
+  </script>
+  <script src="../lib/assert.js"></script>
+  <script src="../lib/fixtures.js"></script>
+  <script src="../../vendor/web-haptics.js"></script>
+  <script src="../../app.js"></script>
+
+  <script>
+  (async () => {
+    const t = TestAssert.create({
+      out: document.getElementById('results'),
+      summary: document.getElementById('summary'),
+    });
+    t.installErrorTrap('storage');
+
+    const T = window.__breatheTest__;
+    if (!T) {
+      t.assert('window.__breatheTest__ is exposed', false);
+      t.finish();
+      return;
+    }
+
+    await t.block('loadSettings: empty + corrupt fallback', () => {
+      TestFixtures.withTempStorage(() => {
+        // No key set yet → defaults.
+        const empty = T.loadSettings();
+        t.eq('empty storage uses default techniqueId', empty.techniqueId, T.DEFAULTS.techniqueId);
+        t.eq('empty storage has streak 0',             empty.streak, 0);
+        t.eq('empty storage has lastSessionDate null', empty.lastSessionDate, null);
+
+        // Corrupt JSON → defaults (must not throw).
+        localStorage.setItem(T.STORAGE_KEY, '{ corrupt');
+        const corrupt = T.loadSettings();
+        t.eq('corrupt JSON falls back to default streak', corrupt.streak, 0);
+        t.eq('corrupt JSON falls back to default tech',   corrupt.techniqueId, T.DEFAULTS.techniqueId);
+      });
+    });
+
+    await t.block('Store.set: merges over defaults + previous state, persists', () => {
+      TestFixtures.withTempStorage(() => {
+        T.Store.refresh();
+        T.Store.set({ haptics: false });
+        const a = T.Store.get();
+        t.eq('first set turns haptics off',  a.haptics, false);
+        t.eq('first set keeps default audio', a.audio, T.DEFAULTS.audio);
+
+        T.Store.set({ audio: true });
+        const b = T.Store.get();
+        t.eq('second set keeps haptics off (persisted)', b.haptics, false);
+        t.eq('second set turns audio on',                b.audio, true);
+
+        const persisted = JSON.parse(localStorage.getItem(T.STORAGE_KEY));
+        t.eq('persisted haptics matches', persisted.haptics, false);
+        t.eq('persisted audio matches',   persisted.audio, true);
+      });
+    });
+
+    await t.block('writeSettings: round-trips JSON', () => {
+      TestFixtures.withTempStorage(() => {
+        T.writeSettings({ ...T.DEFAULTS, streak: 7, totalMinutes: 12.5 });
+        const out = T.loadSettings();
+        t.eq('streak round-trips',       out.streak, 7);
+        t.eq('totalMinutes round-trips', out.totalMinutes, 12.5);
+      });
+    });
+
+    await t.block('recordSession: streak + totals semantics', () => {
+      TestFixtures.withTempStorage(() => {
+        // First session: streak 0 → 1.
+        let s = T.recordSession(60_000);
+        t.eq('first session streak=1',          s.streak, 1);
+        t.eq('first session totalSessions=1',   s.totalSessions, 1);
+        t.near('first session totalMinutes≈1', s.totalMinutes, 1, 0.001);
+        t.eq('first session lastSessionDate=today', s.lastSessionDate, T.localDateKey());
+
+        // Same-day second session: streak unchanged, totals accumulate.
+        s = T.recordSession(120_000);
+        t.eq('same-day streak unchanged',  s.streak, 1);
+        t.eq('same-day totalSessions+=1',  s.totalSessions, 2);
+        t.near('same-day totalMinutes+=2', s.totalMinutes, 3, 0.001);
+
+        // Yesterday handoff: streak +=1.
+        const yesterday = T.localDateKey(new Date(Date.now() - 86_400_000));
+        const cur = JSON.parse(localStorage.getItem(T.STORAGE_KEY));
+        cur.lastSessionDate = yesterday;
+        cur.streak = 5;
+        localStorage.setItem(T.STORAGE_KEY, JSON.stringify(cur));
+        s = T.recordSession(60_000);
+        t.eq('yesterday continues streak (5→6)', s.streak, 6);
+
+        // Gap (3 days ago): resets to 1.
+        const threeAgo = T.localDateKey(new Date(Date.now() - 3 * 86_400_000));
+        cur.lastSessionDate = threeAgo;
+        cur.streak = 12;
+        localStorage.setItem(T.STORAGE_KEY, JSON.stringify(cur));
+        s = T.recordSession(60_000);
+        t.eq('3-day gap resets streak to 1', s.streak, 1);
+      });
+    });
+
+    // SESSION_RECORD_THRESHOLD_MS is the gate Session.end() applies before
+    // calling recordSession. recordSession itself does NOT enforce it; this
+    // test just pins the constant so the integration test reads from the
+    // same source of truth.
+    await t.block('SESSION_RECORD_THRESHOLD_MS pinned', () => {
+      t.eq('threshold is 30 s', T.SESSION_RECORD_THRESHOLD_MS, 30_000);
+    });
+
+    t.finish();
+  })();
+  </script>
+</body>
+</html>

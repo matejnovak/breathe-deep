@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Breathe Deep . tests</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+      padding: 24px; max-width: 920px; margin: 0 auto;
+      color: #eee; background: #15171f;
+    }
+    h1 { font-weight: 500; font-size: 18px; margin: 0 0 4px; }
+    p.lede { color: #aab; margin: 0 0 18px; }
+    .grid { display: grid; gap: 10px; }
+    .file {
+      display: grid;
+      grid-template-columns: 22px 1fr 120px 80px;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: #1c2030;
+    }
+    .file .dot { width: 10px; height: 10px; border-radius: 50%; background: #3a4060; justify-self: center; }
+    .file.pass .dot { background: #6dd58d; }
+    .file.fail .dot { background: #e07171; }
+    .file.run  .dot { background: #d8c5a0; }
+    .file a { color: #d8c5a0; text-decoration: none; }
+    .file a:hover { text-decoration: underline; }
+    .file .count { font-variant-numeric: tabular-nums; color: #aab; text-align: right; }
+    .file .badge {
+      font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 2px 8px; border-radius: 999px; background: #2a2f44; color: #aab;
+      justify-self: end;
+    }
+    .file.pass .badge { background: rgba(80,200,120,0.18); color: #b9f1c8; }
+    .file.fail .badge { background: rgba(220,90,90,0.22); color: #ffd6d6; }
+    .file.run  .badge { background: rgba(220,200,160,0.22); color: #f1e2c0; }
+    .summary {
+      margin: 18px 0; padding: 14px 16px; border-radius: 10px; background: #1c2030;
+      display: flex; gap: 18px; align-items: baseline;
+    }
+    .summary strong { font-size: 20px; }
+    .summary[data-state="pass"] { background: rgba(80,200,120,0.10); }
+    .summary[data-state="fail"] { background: rgba(220,90,90,0.12); }
+    details { margin-top: 8px; }
+    details summary { cursor: pointer; color: #aab; }
+    pre.failure {
+      margin: 6px 0; padding: 8px 10px;
+      background: rgba(220,90,90,0.12);
+      color: #ffd6d6;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      font-size: 12px;
+    }
+    /* Iframes load their pages but we don't show them. */
+    iframe { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Breathe Deep . test runner</h1>
+  <p class="lede">Loads each test page in an iframe and aggregates results.</p>
+
+  <div id="summary" class="summary">running…</div>
+  <div id="grid" class="grid"></div>
+
+  <script>
+    const FILES = [
+      'unit/dates.test.html',
+      'unit/storage.test.html',
+      'unit/store.test.html',
+      'unit/engine.test.html',
+      'unit/reminder.test.html',
+      'integration/session.test.html',
+    ];
+
+    const grid = document.getElementById('grid');
+    const summary = document.getElementById('summary');
+    const rows = new Map();
+
+    for (const file of FILES) {
+      const row = document.createElement('div');
+      row.className = 'file run';
+      row.innerHTML = `
+        <span class="dot"></span>
+        <a href="${file}" target="_blank" rel="noopener">${file}</a>
+        <span class="count">running…</span>
+        <span class="badge">run</span>
+      `;
+      grid.append(row);
+      const iframe = document.createElement('iframe');
+      // Bypass any leftover service worker cache from app development.
+      iframe.src = file + '?nocache=' + Date.now() + Math.random().toString(36).slice(2);
+      document.body.append(iframe);
+      rows.set(file, { row, iframe, done: false, passed: 0, failed: 0, failures: [] });
+    }
+
+    let totalPassed = 0, totalFailed = 0, completed = 0;
+
+    function updateSummary() {
+      if (completed < FILES.length) {
+        summary.textContent = `${totalPassed} passed, ${totalFailed} failed (${completed}/${FILES.length} files)`;
+        summary.dataset.state = '';
+        return;
+      }
+      const ok = totalFailed === 0;
+      summary.dataset.state = ok ? 'pass' : 'fail';
+      summary.innerHTML =
+        `<strong>${totalPassed}</strong> passed` +
+        ` · <strong>${totalFailed}</strong> failed` +
+        ` · <span>${FILES.length} files</span>`;
+      document.title = (ok ? '✓ ' : '✗ ') + document.title;
+    }
+
+    window.addEventListener('message', (e) => {
+      const m = e.data;
+      if (!m || m.type !== 'breathe-test') return;
+      // Match by suffix: postMessage's `file` is the iframe's pathname.
+      const match = FILES.find((f) => m.file && m.file.endsWith(f));
+      if (!match) return;
+      const r = rows.get(match);
+      if (!r || r.done) return;
+      r.done = true;
+      r.passed = m.passed | 0;
+      r.failed = m.failed | 0;
+      r.failures = m.failures || [];
+      totalPassed += r.passed;
+      totalFailed += r.failed;
+      completed++;
+
+      const ok = r.failed === 0;
+      r.row.classList.remove('run');
+      r.row.classList.add(ok ? 'pass' : 'fail');
+      r.row.querySelector('.count').textContent = `${r.passed} / ${r.passed + r.failed}`;
+      r.row.querySelector('.badge').textContent = ok ? 'pass' : 'fail';
+
+      if (!ok) {
+        const det = document.createElement('details');
+        det.style.gridColumn = '1 / -1';
+        det.innerHTML = `<summary>${r.failed} failure${r.failed === 1 ? '' : 's'}</summary>`;
+        for (const f of r.failures) {
+          const pre = document.createElement('pre');
+          pre.className = 'failure';
+          pre.textContent = '✗ ' + f.name + (f.detail ? '\n' + f.detail : '');
+          det.append(pre);
+        }
+        r.row.append(det);
+      }
+
+      updateSummary();
+    });
+
+    // Safety net: if a page hangs (e.g. unhandled rejection that does not
+    // call finish), mark as failed after 30 s.
+    setTimeout(() => {
+      for (const [file, r] of rows) {
+        if (!r.done) {
+          r.done = true;
+          r.failed = 1;
+          totalFailed++;
+          completed++;
+          r.row.classList.remove('run');
+          r.row.classList.add('fail');
+          r.row.querySelector('.count').textContent = 'timeout';
+          r.row.querySelector('.badge').textContent = 'fail';
+          updateSummary();
+        }
+      }
+    }, 30_000);
+
+    updateSummary();
+  </script>
+</body>
+</html>

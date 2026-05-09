@@ -1,20 +1,27 @@
-# Operating system files
-.Spotlight-V100
-.Trashes
+# OS
 .DS_Store
 .DS_Store?
+.Spotlight-V100
+.Trashes
 ehthumbs.db
 Thumbs.db
 
-
-# Other
+# Logs
 *.log
-sitemap.xml
-sitemap.xml.gz
 error_log
 
+# Local-only / generated
+sitemap.xml
+sitemap.xml.gz
+node_modules/
 
-# Ignore everything in the root except ...
-/*
-!.gitignore
-!maintenance.php
+# Editor
+.vscode/
+.idea/
+
+# Secrets . never commit anything that looks like credentials
+*.pem
+*.key
+.env
+.env.*
+secrets/

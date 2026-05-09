@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Breathe Deep . engine</title>
+  <style>
+    body { font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 24px; max-width: 720px; margin: 0 auto; color: #eee; background: #15171f; }
+    h1 { font-weight: 500; font-size: 18px; }
+    .row { padding: 6px 10px; border-radius: 6px; margin: 2px 0; }
+    .pass { background: rgba(80, 200, 120, 0.12); color: #b9f1c8; }
+    .fail { background: rgba(220, 90, 90, 0.18); color: #ffd6d6; white-space: pre-wrap; }
+    .summary { margin-top: 16px; padding: 12px; border-radius: 8px; background: #1c2030; }
+  </style>
+</head>
+<body>
+  <h1>Breathe Deep . engine</h1>
+  <div id="results"></div>
+  <div id="summary" class="summary">running…</div>
+
+  <script>
+    if (!/[?&]test(=|&|$)/.test(location.search)) {
+      const sep = location.search ? '&' : '?';
+      history.replaceState(null, '', location.pathname + location.search + sep + 'test=1');
+    }
+  </script>
+  <script src="../lib/assert.js"></script>
+  <script src="../lib/fake-clock.js"></script>
+  <script src="../lib/fixtures.js"></script>
+  <script src="../../vendor/web-haptics.js"></script>
+  <script src="../../app.js"></script>
+
+  <script>
+  (async () => {
+    const t = TestAssert.create({
+      out: document.getElementById('results'),
+      summary: document.getElementById('summary'),
+    });
+    t.installErrorTrap('engine');
+
+    const T = window.__breatheTest__;
+    if (!T) { t.assert('window.__breatheTest__ is exposed', false); t.finish(); return; }
+
+    // ── State machine (no time advance needed) ────────────────────────────
+    await t.block('state machine', () => {
+      TestClock.install();
+      try {
+        const phases = [];
+        const eng = new T.BreathEngine(TestFixtures.TWO_PHASE, {
+          onPhase: (p) => phases.push(p.kind),
+          durationMs: Infinity,
+        });
+        try {
+          t.eq('initial state is idle', eng.state, 'idle');
+          eng.start();
+          t.eq('start() sets running', eng.state, 'running');
+          t.assert('emits first phase on start', phases.length >= 1);
+          eng.pause();
+          t.eq('pause() sets paused', eng.state, 'paused');
+          eng.resume();
+          t.eq('resume() sets running', eng.state, 'running');
+          eng.stop();
+          t.eq('stop() returns to idle', eng.state, 'idle');
+        } finally { eng.stop(); }
+
+        // Double start is a no-op.
+        const eng2 = new T.BreathEngine(TestFixtures.TWO_PHASE, { durationMs: Infinity });
+        try {
+          eng2.start();
+          eng2.start();
+          t.eq('double start() stays running', eng2.state, 'running');
+        } finally { eng2.stop(); }
+
+        // pause/resume before start are no-ops.
+        const eng3 = new T.BreathEngine(TestFixtures.TWO_PHASE, { durationMs: Infinity });
+        eng3.pause();
+        t.eq('pause() before start is idle', eng3.state, 'idle');
+        eng3.resume();
+        t.eq('resume() before start is idle', eng3.state, 'idle');
+      } finally { TestClock.uninstall(); }
+    });
+
+    // ── Phase ordering and breath count (fake clock) ─────────────────────
+    await t.block('phase ordering + breathCount with box technique', () => {
+      TestClock.install();
+      try {
+        const phaseKinds = [];
+        const eng = new T.BreathEngine(TestFixtures.BOX, {
+          onPhase: (p) => phaseKinds.push(p.kind),
+          durationMs: Infinity,
+        });
+        try {
+          eng.start();
+          t.deepEq('start emits inhale first', phaseKinds.slice(0, 1), ['inhale']);
+
+          // BOX phases are 1 s each. After 4 s of virtual time we should have
+          // emitted exactly 5 phases (the initial inhale + 4 transitions, the
+          // last of which wraps back to inhale).
+          TestClock.tick(4000);
+          t.deepEq('first 5 emitted phases',
+            phaseKinds.slice(0, 5),
+            ['inhale', 'hold', 'exhale', 'hold', 'inhale']);
+
+          // breathCount increments when a non-inhale wraps the index back to 0.
+          // After 1 full BOX cycle (4 s) breathCount must be 1.
+          t.eq('breathCount after 1 cycle', eng.breathCount, 1);
+
+          TestClock.tick(4000);
+          t.eq('breathCount after 2 cycles', eng.breathCount, 2);
+        } finally { eng.stop(); }
+      } finally { TestClock.uninstall(); }
+    });
+
+    // ── Throttled-tab semantics: a late timer fire must NOT skip phases ───
+    // The new engine treats the scheduled wait as authoritative, so even if
+    // setTimeout fires 10 s late only one phase advance happens.
+    await t.block('throttled tab does not fast-forward phases', () => {
+      TestClock.install();
+      try {
+        const phaseKinds = [];
+        const eng = new T.BreathEngine(TestFixtures.BOX, {
+          onPhase: (p) => phaseKinds.push(p.kind),
+          durationMs: Infinity,
+        });
+        try {
+          eng.start();
+          // Jump 10 s of wall-clock without firing the timer. The engine has
+          // a setTimeout pending for the inhale→hold boundary at +1 s.
+          TestClock.jump(10_000);
+          // Now flush: the late timer fires, but only the scheduled 1 s of
+          // phase progress is credited.
+          TestClock.flush();
+          t.deepEq('exactly 2 phases emitted after late fire',
+            phaseKinds, ['inhale', 'hold']);
+          // sessionElapsedMs = scheduled wait (1000) + (now - phaseStart)
+          // phaseStart was reset to current `now` after the fire, so the
+          // delta is 0 and we expect a clean 1000 ms.
+          t.eq('sessionElapsed bounded by scheduled wait', eng.sessionElapsedMs, 1000);
+        } finally { eng.stop(); }
+      } finally { TestClock.uninstall(); }
+    });
+
+    // ── pause/resume preserves elapsed across a wall-clock leap ──────────
+    await t.block('pause/resume preserves elapsed', () => {
+      TestClock.install();
+      try {
+        const eng = new T.BreathEngine(TestFixtures.BOX, { durationMs: Infinity });
+        try {
+          eng.start();
+          TestClock.tick(500);
+          const before = eng.sessionElapsedMs;
+          t.assert('elapsed advanced under tick', before > 400 && before < 700);
+
+          eng.pause();
+          TestClock.jump(5000);
+          eng.resume();
+          TestClock.tick(100);
+
+          const after = eng.sessionElapsedMs;
+          t.assert('elapsed grew by ~100 ms across pause, not 5 s',
+            after - before >= 50 && after - before <= 250);
+        } finally { eng.stop(); }
+      } finally { TestClock.uninstall(); }
+    });
+
+    // ── onComplete fires when durationMs is reached ──────────────────────
+    await t.block('onComplete with finite durationMs', () => {
+      TestClock.install();
+      try {
+        let done = null;
+        const eng = new T.BreathEngine(TestFixtures.BOX, {
+          onComplete: (c) => { done = c; },
+          durationMs: 2500,
+        });
+        try {
+          eng.start();
+          TestClock.tick(2600);
+          t.assert('onComplete fired', done !== null);
+          if (done) t.eq('onComplete elapsedMs == 2500', done.elapsedMs, 2500);
+          t.eq('engine returns to idle after completion', eng.state, 'idle');
+        } finally { eng.stop(); }
+      } finally { TestClock.uninstall(); }
+    });
+
+    t.finish();
+  })();
+  </script>
+</body>
+</html>

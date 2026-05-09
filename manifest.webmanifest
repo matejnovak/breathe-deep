@@ -1,0 +1,17 @@
+{
+  "name": "Breathe Deep",
+  "short_name": "Breathe",
+  "description": "A small space to breathe. Pick a rhythm, follow the orb, exhale.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1018",
+  "theme_color": "#0e1018",
+  "icons": [
+    { "src": "favicon.png", "sizes": "60x60", "type": "image/png", "purpose": "any" },
+    { "src": "img/touch-icon-iphone-retina.png", "sizes": "120x120", "type": "image/png", "purpose": "any" },
+    { "src": "img/touch-icon-ipad-retina.png", "sizes": "152x152", "type": "image/png", "purpose": "any" }
+  ],
+  "categories": ["health", "lifestyle", "wellness"]
+}
